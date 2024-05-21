@@ -6,6 +6,49 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+DOCUMENTATION = r'''
+---
+module: facts_vsz
+
+short_description: Gathers facts the SmartZone instance
+
+description:
+    - This module can be used to gathers facts bouthe the SmartZone api and cluster.
+
+author:
+    - Marius Rieder (@jiuka)
+'''
+
+EXAMPLES = r'''
+- name: Gather SmartZone facts
+  scsitteam.smartzone.facts_vsz:
+'''
+
+RETURN = r'''
+ansible_facts:
+  description: info about the SmartZone instance
+  returned: always
+  type: dict
+  sample:
+    {
+        "smartzone_admin_id": "01234567-89ab-cdef-0000-0123456789ab",
+        "smartzone_api_latest_version": "v11_1",
+        "smartzone_api_supported_version": [
+            "v9_0",
+            "v9_1",
+            "v10_0",
+            "v11_0",
+            "v11_1"
+        ],
+        "smartzone_cluster_name": "ANSIBLE-TEST-CLUSTER",
+        "smartzone_cluster_role": "Leader",
+        "smartzone_cluster_state": "In_Service",
+        "smartzone_domain_id": "01234567-89ab-cdef-0000-0123456789ab",
+        "smartzone_node_id": "01234567-89ab-cdef-0000-0123456789ab",
+        "smartzone_node_name": "smartzone"
+    }
+'''
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
 
