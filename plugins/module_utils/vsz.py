@@ -7,10 +7,10 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import requests
 from functools import cached_property
 from ansible.module_utils.basic import AnsibleModule, env_fallback
 from ansible.module_utils.connection import Connection
+
 
 class SmartZoneConnection(object):
     def __init__(self, module):
@@ -20,25 +20,24 @@ class SmartZoneConnection(object):
     def _cli(self):
         return Connection(self.module._socket_path)
 
-    
     def get(self, ressource, expected_code=[200]):
         code , data = self._cli.send_request(ressource)
         if code not in expected_code:
             self.module.fail_json(msg=f"GET failed for '{ressource}'", status_code=code, body=data)
         return data
-    
+
     def patch(self, ressource, payload, expected_code=[204]):
         code , data = self._cli.send_request(ressource, data=payload, method='PATCH')
         if code not in expected_code:
             self.module.fail_json(msg=f"PATCH failed for '{ressource}'", status_code=code, body=data)
         return data
-    
+
     def put(self, ressource, payload, expected_code=[204]):
         code , data = self._cli.send_request(ressource, data=payload, method='PUT')
         if code not in expected_code:
             self.module.fail_json(msg=f"PUT failed for '{ressource}'", status_code=code, body=data)
         return data
-    
+
     def post(self, ressource, payload, expected_code=[201]):
         code , data = self._cli.send_request(ressource, data=payload, method='POST')
         if code not in expected_code:
@@ -66,9 +65,9 @@ class SmartZoneConnection(object):
             if item['name'] == name:
                 return self.get(f"{ressource}/{item['id']}")
         if required:
-            self.module.fail_json(msg=f"Could not find ressource '{ressource}' with name '{name}'.") 
+            self.module.fail_json(msg=f"Could not find ressource '{ressource}' with name '{name}'.")
         return None
-    
+
     def update_dict(self, current, **kwargs):
         return {
             key: kwargs[key]
