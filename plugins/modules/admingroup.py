@@ -75,6 +75,25 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
+EXAMPLES = r'''
+- name: Setup Monitoring  User
+  adminuser:
+    name: monitoring
+    password: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
+    email: monitoring@example.com
+  register: monitoring
+
+- name: Setup Admin Group
+  admingroup:
+    name: Monitoring
+    role: RO_SYSTEM_ADMIN
+    resource_groups:
+      - type: DOMAIN
+        id: "{{ smartzone_domain_id }}"
+    users:
+      - "{{ monitoring.user }}"
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule

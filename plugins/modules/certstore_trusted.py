@@ -42,6 +42,14 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
+EXAMPLES = r'''
+- name: Ensure Trusted CA
+  certstore_trusted:
+    name: MYCA
+    description: MYCA
+    root: "{{ lookup('ansible.builtin.file', 'MYCA.crt') }}"
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule

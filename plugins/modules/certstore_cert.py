@@ -44,6 +44,46 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
+EXAMPLES = r'''
+- name: Choose passphrase
+  ansible.builtin.set_fact:
+  passphrase: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
+
+- name: Generate Privatkey
+  community.crypto.openssl_privatekey_pipe:
+    type: RSA
+    cipher: auto
+    passphrase: "{{ passphrase }}"
+    diff: false
+    no_log: true
+    register: key
+
+- name: Generate CSR
+  community.crypto.openssl_csr_pipe:
+    privatekey_content: "{{ key.privatekey }}"
+    privatekey_passphrase: "{{ passphrase }}"
+    common_name: smartzone.examlpe.com
+    organization_name: Ansible
+    subject_alt_name:
+        - "DNS:smartzone.examlpe.com"
+    register: csr
+
+- name: Generate SelfSigned Certificate
+  community.crypto.x509_certificate_pipe:
+    provider: selfsigned
+    privatekey_content: "{{ key.privatekey }}"
+    privatekey_passphrase: "{{ passphrase }}"
+    csr_content: "{{ csr.csr }}"
+  register: cert
+
+- name: Upload Cert and key
+  certstore_cert:
+    name: smartzone.examlpe.com
+    cert: "{{ cert.certificate }}"
+    key: "{{ key.privatekey }}"
+    passphrase: "{{ passphrase }}"
+'''
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
 

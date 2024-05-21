@@ -47,6 +47,15 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
+EXAMPLES = r'''
+- name: Setup Admin User
+  adminuser:
+    name: Alice
+    realName: Alice
+    password: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
+    email: alice@example.com
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
