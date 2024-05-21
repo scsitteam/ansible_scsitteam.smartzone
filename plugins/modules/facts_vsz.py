@@ -52,6 +52,7 @@ ansible_facts:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
 
+
 def main():
     """main entry point for module execution
     """

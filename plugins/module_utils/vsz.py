@@ -4,110 +4,81 @@
 # GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-from __future__ import absolute_import, division, print_function
+from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-DOCUMENTATION = """
-author: Marius Rieder <marius.rider@scs.ch>
-name: vsz
-short_description: Use Ruckus SmartZone RestAPI
-description:
-"""
+import requests
+from functools import cached_property
+from ansible.module_utils.basic import AnsibleModule, env_fallback
+from ansible.module_utils.connection import Connection
 
-import json
+class SmartZoneConnection(object):
+    def __init__(self, module):
+        self.module = module
 
-from ansible.module_utils.basic import to_text
-from ansible.errors import AnsibleConnectionFailure
-from ansible.module_utils.connection import ConnectionError
-from ansible.plugins.httpapi import HttpApiBase
-from ansible.module_utils.six.moves.urllib.error import HTTPError
+    @cached_property
+    def _cli(self):
+        return Connection(self.module._socket_path)
 
-BASE_HEADERS = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-}
+    
+    def get(self, ressource, expected_code=[200]):
+        code , data = self._cli.send_request(ressource)
+        if code not in expected_code:
+            self.module.fail_json(msg=f"GET failed for '{ressource}'", status_code=code, body=data)
+        return data
+    
+    def patch(self, ressource, payload, expected_code=[204]):
+        code , data = self._cli.send_request(ressource, data=payload, method='PATCH')
+        if code not in expected_code:
+            self.module.fail_json(msg=f"PATCH failed for '{ressource}'", status_code=code, body=data)
+        return data
+    
+    def put(self, ressource, payload, expected_code=[204]):
+        code , data = self._cli.send_request(ressource, data=payload, method='PUT')
+        if code not in expected_code:
+            self.module.fail_json(msg=f"PUT failed for '{ressource}'", status_code=code, body=data)
+        return data
+    
+    def post(self, ressource, payload, expected_code=[201]):
+        code , data = self._cli.send_request(ressource, data=payload, method='POST')
+        if code not in expected_code:
+            self.module.fail_json(msg=f"POST failed for '{ressource}'", status_code=code, body=data)
+        return data
 
-class HttpApi(HttpApiBase):
-    def login(self, username, password):
-        self.connection._auth = {}
-        if username and password:
-            payload = dict(
-                username=username,
-                password=password,
-            )
-        else:
-            raise AnsibleConnectionFailure('Username and password are required for login')
+    def delete(self, ressource, expected_code=[204]):
+        code , data = self._cli.send_request(ressource, method='DELETE')
+        if code not in expected_code:
+            self.module.fail_json(msg=f"DELETE failed for '{ressource}'", status_code=code, body=data)
+        return data
 
-        # Login
-        code, data = self.send_request('serviceTicket', payload, method='POST')
-        if code != 200:
-            if 'message' in data:
-                raise AnsibleConnectionFailure(f"=== {data}")
-            raise AnsibleConnectionFailure(f"[{code}] {data}")
-        self.connection._service_ticket = data['serviceTicket']
+    def retrive_list(self, ressource, **kwargs):
+        index = 0
+        while True:
+            page = self.get(ressource, **kwargs)
+            for item in page['list']:
+                yield item
+            if not page['hasMore']:
+                return
+            index += len(item)
 
-    def logout(self):
-        self.send_request('serviceTicket', None, method='DELETE')
+    def retrive_by_name(self, ressource, name, required=False, **kwargs):
+        for item in self.retrive_list(ressource, **kwargs):
+            if item['name'] == name:
+                return self.get(f"{ressource}/{item['id']}")
+        if required:
+            self.module.fail_json(msg=f"Could not find ressource '{ressource}' with name '{name}'.") 
+        return None
+    
+    def update_dict(self, current, **kwargs):
+        return {
+            key: kwargs[key]
+            for key in kwargs
+            if kwargs[key] is not None and current[key] != kwargs[key]
+        }
 
-    @property
-    def api_info(self):
-        if not hasattr(self.connection, '_api_info'):
-            resp, response_data = self.connection.send(
-                '/wsg/api/public/apiInfo',
-                None,
-                method='GET',
-                headers = BASE_HEADERS,
-            )
-            data = to_text(response_data.getvalue())
-            if data:
-                data = json.loads(data)
-            
-            if resp.getcode() != 200 or 'apiSupportVersions' not in data:
-                raise AnsibleConnectionFailure(f"Could not connect to endpoint {self.connection._url}/wsg/api/public/apiInfo")
-            
-            setattr(self.connection, '_api_info', data)
-        return getattr(self.connection, '_api_info')
-
-    @property
-    def latest_version(self):
-        return self.api_info['apiSupportVersions'][-1]
-
-    def send_request(self, path, data=None, method='GET'):
-        path = f"/wsg/api/public/{self.latest_version}/{path}"
-        self._display_request(method, path)
-        if hasattr(self.connection, '_service_ticket'):
-            path = f"{path}?serviceTicket={self.connection._service_ticket}"
-
-        
-        if data:
-            data = json.dumps(data)
-
-        try:
-            response, response_data = self.connection.send(
-                path,
-                data,
-                method=method,
-                headers=BASE_HEADERS,
-            )
-            response_value = self._get_response_value(response_data)
-
-            return response.getcode(), self._response_to_json(response_value)
-        except AnsibleConnectionFailure:
-            return 404, 'Object not found'
-        except HTTPError as e:
-            return e.code, json.loads(e.read())
-
-    def _display_request(self, method, path):
-        self.connection.queue_message(
-            "vvvv",
-            f"Web Services: {method} {self.connection._url}{path}"
-        )
-
-    def _get_response_value(self, response_data):
-        return to_text(response_data.getvalue())
-
-    def _response_to_json(self, response_text):
-        try:
-            return json.loads(response_text) if response_text else {}
-        except json.JSONDecodeError:
-            raise ConnectionError(f"Invalid JSON response: {response_text}")
+    def retrive_groups_by_wlan(self, wlan):
+        groups = []
+        for item in self.retrive_list(f"rkszones/{wlan['zoneId']}/wlangroups"):
+            if any(m['id'] == wlan['id'] for m in item['members']):
+                groups.append(item)
+        return groups

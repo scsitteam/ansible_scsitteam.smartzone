@@ -26,6 +26,7 @@ BASE_HEADERS = {
     'Accept': 'application/json',
 }
 
+
 class HttpApi(HttpApiBase):
     def login(self, username, password):
         self.connection._auth = {}
@@ -55,15 +56,15 @@ class HttpApi(HttpApiBase):
                 '/wsg/api/public/apiInfo',
                 None,
                 method='GET',
-                headers = BASE_HEADERS,
+                headers=BASE_HEADERS,
             )
             data = to_text(response_data.getvalue())
             if data:
                 data = json.loads(data)
-            
+
             if resp.getcode() != 200 or 'apiSupportVersions' not in data:
                 raise AnsibleConnectionFailure(f"Could not connect to endpoint {self.connection._url}/wsg/api/public/apiInfo")
-            
+
             setattr(self.connection, '_api_info', data)
         return getattr(self.connection, '_api_info')
 
@@ -77,7 +78,6 @@ class HttpApi(HttpApiBase):
         if hasattr(self.connection, '_service_ticket'):
             path = f"{path}?serviceTicket={self.connection._service_ticket}"
 
-        
         if data:
             data = json.dumps(data)
 
