@@ -8,10 +8,9 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-
 DOCUMENTATION = r'''
 ---
-module: sz_certstore_cert_info
+module: certstore_cert_info
 
 short_description: Manage Trusted CAs
 
@@ -25,6 +24,13 @@ options:
 
 author:
     - Marius Rieder (@jiuka)
+'''
+
+EXAMPLES = r'''
+---
+- name: Query Cert
+  certstore_cert_info:
+    name: smartzone.examlpe.com
 '''
 
 from ansible.module_utils.basic import AnsibleModule

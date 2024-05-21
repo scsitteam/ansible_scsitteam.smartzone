@@ -11,20 +11,34 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: sz_certstore_cert_info
+module: certstore_cert
 
-short_description: Manage Trusted CAs
+short_description: Manage x509 certificates.
 
-description: Manage trusted cas and chains.
+description: Manage x509 certificates and keys.
 
 options:
     name:
-        description: Name of the Cert to query.
+        description: Name of the cert/key to manage
         required: True
         type: str
-
-extends_documentation_fragment:
-    - ruckus
+    description:
+        description: Description of the cert/key
+        type: str
+    cert:
+        description: PEM represenation of the cert.
+        type: str
+    key:
+        description: PEM represenation of the key.
+        type: str
+    passphrase:
+        description: Passphrace of the PEM key.
+        type: str
+    state:
+        description: Desired state of the AD aaa server.
+        type: str
+        default: present
+        choices: ['present', 'absent']
 
 author:
     - Marius Rieder (@jiuka)
@@ -33,12 +47,13 @@ author:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
 
+
 def main():
     argument_spec = dict(
         name=dict(type='str', required=True),
         description=dict(type='str'),
-        cert=dict(type='str', required=True),
-        key=dict(type='str', required=True, no_log=True),
+        cert=dict(type='str'),
+        key=dict(type='str', no_log=True),
         passphrase=dict(type='str', no_log=True),
         state=dict(default='present', choices=['present', 'absent'])
     )
@@ -46,6 +61,9 @@ def main():
     module = AnsibleModule(
         argument_spec=argument_spec,
         supports_check_mode=True,
+        required_if=[
+            ('state', 'present', ('cert', 'key'), False),
+        ],
     )
     conn = SmartZoneConnection(module)
     result = dict(changed=False)
@@ -76,7 +94,7 @@ def main():
             payload['description'] = description
         if passphrase:
             payload['passphrase'] = passphrase
-        
+
         result['changed'] = True
         if not module.check_mode:
             resp = conn.post('certstore/certificate', json=payload)

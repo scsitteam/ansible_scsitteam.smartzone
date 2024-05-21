@@ -8,10 +8,50 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+
+DOCUMENTATION = r'''
+---
+module: adminuser
+
+short_description: Manage admin user
+
+description: Manage SmartZone admin users.
+
+options:
+    name:
+        description: Name of the admin user.
+        required: True
+        type: str
+    realName:
+        description: Relanme of the admin user.
+        type: str
+    phone:
+        description: Relanme of the admin user.
+        type: str
+    email:
+        description: Email address of the admin user.
+        type: str
+    title:
+        description: Email address of the admin user.
+        type: str
+    password:
+        description: Initial password of the admin user.
+        type: str
+    state:
+        description: Desired state of the AD aaa server.
+        type: str
+        default: present
+        choices: ['present', 'absent']
+
+author:
+    - Marius Rieder (@jiuka)
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+
 
 def main():
     argument_spec = dict(
@@ -99,6 +139,7 @@ def main():
         result['diff'] = dict(before=current_user, after=new_user)
 
     module.exit_json(**result)
+
 
 if __name__ == '__main__':
     main()

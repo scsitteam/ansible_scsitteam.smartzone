@@ -11,11 +11,11 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: sz_certstore_trusted
+module: certstore_trusted
 
 short_description: Manage Trusted CAs
 
-description: Manage trusted cas and chains.
+description: Manage trusted CAs and chains.
 
 options:
     name:
@@ -26,35 +26,34 @@ options:
         description: Description of the Trust Entry.
         type: str
     root:
-        description: Cert as PEM of the Trusted root CA.
-        required: True
+        description: Cert as PEM of the Trusted root CA. Required to create/update the entry.
         type: str
     intermediate:
         description: Cert as PEM of the intermidiate CAs.
-        required: True
         type: list
         elements: str
-
-
-extends_documentation_fragment:
-    - ruckus
+    state:
+        description: Desired state of the AD aaa server.
+        type: str
+        default: present
+        choices: ['present', 'absent']
 
 author:
     - Marius Rieder (@jiuka)
 '''
 
-import json
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+
 
 def main():
     argument_spec = dict(
         name=dict(type='str', required=True),
         description=dict(type='str'),
         root=dict(type='str'),
-        intermediate=dict(type='list'),
+        intermediate=dict(type='list', elements='str'),
         state=dict(default='present', choices=['present', 'absent']),
     )
 
@@ -86,10 +85,10 @@ def main():
             rootCertData=root,
         )
         if description:
-            payload['description']=description
+            payload['description'] = description
         if intermediate:
-            payload['interCertData']=intermediate
-        
+            payload['interCertData'] = intermediate
+
         result['changed'] = True
         if not module.check_mode:
             resp = conn.post('certstore/trustedCAChainCert', json=payload)
@@ -107,7 +106,7 @@ def main():
             update_trust['rootCertData'] = root
         if intermediate is not None and current_trust['interCertData'] != intermediate:
             update_trust['interCertData'] = intermediate
-        
+
         if update_trust:
             result['changed'] = True
             if not module.check_mode:

@@ -11,7 +11,7 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: sz_certstore_service
+module: certstore_service
 
 short_description: Manage Certs to use
 
@@ -31,17 +31,22 @@ options:
         description: Id of the Cert to use for communicator.
         type: str
 
-extends_documentation_fragment:
-    - ruckus
-
 author:
     - Marius Rieder (@jiuka)
+'''
+
+EXAMPLES = r'''
+---
+- name: Set Cert for mgmt_web
+  certstore_service:
+    mgmt_web: smartzone.examlpe.com
 '''
 
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+
 
 def main():
     argument_spec = dict(
@@ -65,27 +70,27 @@ def main():
     communicator = module.params.get('communicator')
 
     # Get current state
-    current_scerts = {sc['service']:sc['certificate']  for sc in conn.get('certstore/setting')['serviceCertificates']}
+    current_scerts = {sc['service']: sc['certificate'] for sc in conn.get('certstore/setting')['serviceCertificates']}
 
     update_scerts = []
     if mgmt_web and current_scerts['MANAGEMENT_WEB']['id'] != mgmt_web:
         update_scerts.append(dict(
-            service= "MANAGEMENT_WEB",
+            service="MANAGEMENT_WEB",
             certificate=dict(id=mgmt_web)
         ))
     if ap_portal and current_scerts['AP_PORTAL']['id'] != ap_portal:
         update_scerts.append(dict(
-            service= "AP_PORTAL",
+            service="AP_PORTAL",
             certificate=dict(id=ap_portal)
         ))
     if hotspot and current_scerts['HOTSPOT']['id'] != hotspot:
         update_scerts.append(dict(
-            service= "HOTSPOT",
+            service="HOTSPOT",
             certificate=dict(id=hotspot)
         ))
     if communicator and current_scerts['COMMUNICATOR']['id'] != communicator:
         update_scerts.append(dict(
-            service= "COMMUNICATOR",
+            service="COMMUNICATOR",
             certificate=dict(id=communicator)
         ))
 
@@ -93,7 +98,7 @@ def main():
         result['changed'] = True
         if not module.check_mode:
             conn.patch('certstore/setting/serviceCertificates', json=update_scerts)
-            current_scerts = {sc['service']:sc['certificate']  for sc in conn.get('certstore/setting')['serviceCertificates']}
+            current_scerts = {sc['service']: sc['certificate'] for sc in conn.get('certstore/setting')['serviceCertificates']}
         else:
             new_scerts = copy.deepcopy(current_scerts)
             for sc in update_scerts:

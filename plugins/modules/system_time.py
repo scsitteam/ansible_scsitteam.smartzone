@@ -11,9 +11,9 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: sz_system_time
+module: system_time
 
-short_description: Set SmartZone system time config
+short_description: Manage SmartZone system time config
 
 description: Manage system time zone and ntp servers.
 
@@ -35,11 +35,22 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
-import json
+EXAMPLES = r'''
+---
+- name: Set Timezone
+  system_time:
+    timezone: Europe/Zurich
+
+- name: Set NTP Server
+  system_time:
+    ntp_server: 192.168.0.10
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+
 
 def main():
     argument_spec = dict(
@@ -61,9 +72,9 @@ def main():
     ntp_server = module.params.get('ntp_server')
     secondary_ntp_server = module.params.get('secondary_ntp_server')
     third_ntp_server = module.params.get('third_ntp_server')
-        
+
     current_time = conn.get('system/systemTime')
-    result['system_time'] = {k:v for k,v in current_time.items() if not k.endswith('Key') }
+    result['system_time'] = {k: v for k, v in current_time.items() if not k.endswith('Key')}
     update_time = dict()
 
     if current_time['timezone'] != timezone:
@@ -86,13 +97,13 @@ def main():
         else:
             new_time = copy.deepcopy(current_time)
             new_time.update(update_time)
-        result['system_time'] = {k:v for k,v in new_time.items() if not k.endswith('Key') }
+        result['system_time'] = {k: v for k, v in new_time.items() if not k.endswith('Key')}
 
     # Diff
     if result['changed'] and module._diff:
         result['diff'] = dict(
-            before={k: v for k,v in current_time.items() if not k.startswith('currentSystemTime')},
-            after={k: v for k,v in new_time.items() if not k.startswith('currentSystemTime')},
+            before={k: v for k, v in current_time.items() if not k.startswith('currentSystemTime')},
+            after={k: v for k, v in new_time.items() if not k.startswith('currentSystemTime')},
         )
 
     module.exit_json(**result)

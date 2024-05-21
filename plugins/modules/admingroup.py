@@ -8,23 +8,97 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+
+DOCUMENTATION = r'''
+---
+module: admingroup
+
+short_description: Manage admin group
+
+description: Manage SmartZone admin groups.
+
+options:
+    name:
+        description: Name of the admin group.
+        required: True
+        type: str
+    description:
+        description: description of the admin group.
+        type: str
+    role:
+        description: Role of the admin group. Either a role or list of permissions needs to be specified.
+        type: str
+        choices: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'NETWORK_ADMIN', 'RO_NETWORK_ADMIN', 'RO_SYSTEM_ADMIN', 'AP_ADMIN', 'GUEST_PASS_ADMIN', 'MVNO_SUPER_ADMIN']
+    security_profile:
+        description: Account security profile to assign.
+        type: str
+        default: Default
+    permissions:
+        description: Custom permissions to group. Either a role or list of permissions needs to be specified.
+        type: list
+        elements: dict
+        suboptions:
+            resource:
+                description: Ressouce to grant access to.
+                type: str
+                required: true
+            access:
+                description: Permission to grant.
+                type: str
+                choices: [READ, MODIFY, FULL_ACCESS]
+                required: true
+    resource_groups:
+        description: Ressource groups to grant access to.
+        type: list
+        elements: dict
+        suboptions:
+            type:
+                description: Ressouce type.
+                type: str
+                choices: [DOMAIN, ZONE, APGROUP]
+                required: true
+            id:
+                description: Ressource group id.
+                type: str
+                required: true
+    users:
+        description: List of users
+        type: list
+        elements: str
+    state:
+        description: Desired state of the AD aaa server.
+        type: str
+        default: present
+        choices: ['present', 'absent']
+
+author:
+    - Marius Rieder (@jiuka)
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
 
+
 def main():
     argument_spec = dict(
         name=dict(type='str', required=True),
         description=dict(type='str'),
-        role=dict(type='str', choices=["SUPER_ADMIN", "SYSTEM_ADMIN", "NETWORK_ADMIN", "RO_NETWORK_ADMIN", "RO_SYSTEM_ADMIN", "AP_ADMIN", "GUEST_PASS_ADMIN", "MVNO_SUPER_ADMIN"]),
-        accountSecurityProfile=dict(type='str', default='Default'),
-        permissions=dict(type='list', options=dict(
+        role=dict(type='str', choices=[
+            "SUPER_ADMIN", "SYSTEM_ADMIN", "NETWORK_ADMIN", "RO_NETWORK_ADMIN",
+            "RO_SYSTEM_ADMIN", "AP_ADMIN", "GUEST_PASS_ADMIN", "MVNO_SUPER_ADMIN"
+        ]),
+        security_profile=dict(type='str', default='Default'),
+        permissions=dict(type='list', elements='dict', options=dict(
             resource=dict(type='str', required=True),
-            access=dict(type='str', choices=['READ', 'MODIFY', 'FULL_ACCESS']),
+            access=dict(type='str', required=True, choices=['READ', 'MODIFY', 'FULL_ACCESS']),
         )),
-        resourceGroups=dict(type='list'),
-        users=dict(type='list'),
+        resource_groups=dict(type='list', elements='dict', options=dict(
+            type=dict(type='str', required=True, choices=['DOMAIN', 'ZONE', 'APGROUP']),
+            id=dict(type='str', required=True),
+        )),
+        users=dict(type='list', elements='str'),
         state=dict(default='present', choices=['present', 'absent'])
     )
 
@@ -34,8 +108,9 @@ def main():
         mutually_exclusive=[
             ('role', 'permissions'),
         ],
-        required_one_of=[
-            ('role', 'permissions'),
+        required_if=[
+            ('state', 'present', ('resource_groups',), False),
+            ('state', 'present', ('role', 'permissions'), True),
         ],
     )
     conn = SmartZoneConnection(module)
@@ -45,7 +120,7 @@ def main():
     name = module.params.get('name')
     state = module.params.get('state')
     role = module.params.get('role')
-    resourceGroups = module.params.get('resourceGroups')
+    resource_groups = module.params.get('resource_groups')
     permissions = module.params.get('permissions')
     users = module.params.get('users')
 
@@ -55,10 +130,10 @@ def main():
         permissions = [{'access': p['access'], 'resource': p['resource']} for p in permissions]
     else:
         role = 'CUSTOM'
-        
+
     if state == 'present':
         accountSecurityProfileId = None
-        pname = module.params.get('accountSecurityProfile')
+        pname = module.params.get('security_profile')
         for p in conn.retrive_list('accountSecurity'):
             if p['name'] == pname:
                 accountSecurityProfileId = p['id']
@@ -74,7 +149,7 @@ def main():
         )
     )
     groups = conn.post('userGroups/query', payload=query, expected_code=200)
-    
+
     current_group = None
     for group in groups['list']:
         if group['name'] == name:
@@ -87,7 +162,7 @@ def main():
         new_group = dict(
             name=name,
             role=role,
-            resourceGroups=resourceGroups,
+            resourceGroups=resource_groups,
             permissions=permissions,
             accountSecurityProfileId=accountSecurityProfileId,
             users=users,
@@ -109,10 +184,10 @@ def main():
         if perm_current != permissions:
             update['permissions'] = permissions
 
-        # resourceGroups
-        rg_current = [{'id': r['id'], 'type': r['type']} for r in current_group['resourceGroups']]
-        if rg_current != resourceGroups:
-            update['resourceGroups'] = resourceGroups
+        # resource_groups
+        rg_current = [{'id': r['id'], 'type': r['type']} for r in current_group['resource_groups']]
+        if rg_current != resource_groups:
+            update['resourceGroups'] = resource_groups
 
         # users
         rusers_current = sorted(u['id'] for u in current_group['users'])
@@ -141,6 +216,7 @@ def main():
         result['diff'] = dict(before=current_group, after=new_group)
 
     module.exit_json(**result)
+
 
 if __name__ == '__main__':
     main()

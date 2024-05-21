@@ -8,10 +8,78 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
+DOCUMENTATION = r'''
+---
+module: adminaaa_ad
+
+short_description: Manage AD AAA Server for the admin realm
+
+description: Manage AD servers for SmartZone admin autentication.
+
+options:
+    name:
+        description: Name of the Cert to query.
+        required: True
+        type: str
+    realm:
+        description: Realm to use the AD server for
+        type: str
+    ip:
+        description: IP Address of the AD Server
+        type: str
+    port:
+        description: Port to connect to
+        type: int
+    domain_name:
+        description: AD Domain name
+        type: str
+    tls:
+        description: Use TLS for LDAP connection to AD server
+        type: bool
+        default: False
+    cn_identity:
+        description: CN to compare x509 server certificate with.
+        type: str
+    proxy_user:
+        description: AD bind user.
+        type: str
+    proxy_password:
+        description: AD bind password.
+        type: str
+    proxy_password_update:
+        description: Wheter to update the proxy_password.
+        type: bool
+        default: false
+    state:
+        description: Desired state of the AD aaa server.
+        type: str
+        default: present
+        choices: ['present', 'absent']
+
+author:
+    - Marius Rieder (@jiuka)
+'''
+
+EXAMPLES = r'''
+- name: Setup AD Server
+  scsitteam.smartzone.adminaaa_ad:
+    name: ad01
+    ip: 192.168.0.1
+    realm: contoso.com
+    domain_name: contoso.com
+
+
+- name: Remove AD Server
+  scsitteam.smartzone.adminaaa_ad:
+    name: ad01
+    state: absent
+'''
+
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+
 
 def main():
     argument_spec = dict(
@@ -20,7 +88,7 @@ def main():
         ip=dict(type='str'),
         port=dict(type='int'),
         domain_name=dict(type='str'),
-        tls=dict(type='bool', defualt=False),
+        tls=dict(type='bool', default=False),
         cn_identity=dict(type='str'),
         proxy_user=dict(type='str'),
         proxy_password=dict(type='str', no_log=True),
