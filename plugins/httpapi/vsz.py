@@ -43,7 +43,7 @@ class HttpApi(HttpApiBase):
         if code != 200:
             if 'message' in data:
                 raise AnsibleConnectionFailure(data['message'])
-            raise AnsibleConnectionFailure('[{}] {}'.format(code, data))
+            raise AnsibleConnectionFailure(f"[{code}] {data}")
         self.connection._service_ticket = data['serviceTicket']
 
     def logout(self):
@@ -63,7 +63,7 @@ class HttpApi(HttpApiBase):
                 data = json.loads(data)
 
             if resp.getcode() != 200 or 'apiSupportVersions' not in data:
-                raise AnsibleConnectionFailure('Could not connect to endpoint {}/wsg/api/public/apiInfo'.format(self.connection._url))
+                raise AnsibleConnectionFailure(f"Could not connect to endpoint {self.connection._url}/wsg/api/public/apiInfo")
 
             setattr(self.connection, '_api_info', data)
         return getattr(self.connection, '_api_info')
@@ -73,13 +73,13 @@ class HttpApi(HttpApiBase):
         return self.api_info['apiSupportVersions'][-1]
 
     def send_request(self, data, path, method='POST'):
-        path = '/wsg/api/public/{}/{}'.format(self.latest_version, path)
+        path = f"/wsg/api/public/{self.latest_version}/{path}"
         self._display_request(method, path)
         if hasattr(self.connection, '_service_ticket'):
             if '?' in path:
-                path = '{}&serviceTicket={}'.format(path, self.connection._service_ticket)
+                path = f"{path}&serviceTicket={self.connection._service_ticket}"
             else:
-                path = '{}?serviceTicket={}'.format(path, self.connection._service_ticket)
+                path = f"{path}?serviceTicket={self.connection._service_ticket}"
 
         if data:
             data = json.dumps(data)
@@ -102,7 +102,7 @@ class HttpApi(HttpApiBase):
     def _display_request(self, method, path):
         self.connection.queue_message(
             "vvvv",
-            'Web Services: {} {}{}'.format(method, self.connection._url, path)
+            f"Web Services: {method} {self.connection._url}{path}"
         )
 
     def _get_response_value(self, response_data):
@@ -112,4 +112,4 @@ class HttpApi(HttpApiBase):
         try:
             return json.loads(response_text) if response_text else {}
         except json.JSONDecodeError:
-            raise ConnectionError('Invalid JSON response: {}'.format(response_text))
+            raise ConnectionError(f"Invalid JSON response: {response_text}")
