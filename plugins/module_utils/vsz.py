@@ -8,7 +8,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 from functools import cached_property
-from ansible.module_utils.basic import AnsibleModule, env_fallback
+
 from ansible.module_utils.connection import Connection
 
 
@@ -21,31 +21,31 @@ class SmartZoneConnection(object):
         return Connection(self.module._socket_path)
 
     def get(self, ressource, expected_code=[200]):
-        code , data = self._cli.send_request(ressource)
+        code , data = self._cli.send_request(None, ressource, method='GET')
         if code not in expected_code:
             self.module.fail_json(msg=f"GET failed for '{ressource}'", status_code=code, body=data)
         return data
 
     def patch(self, ressource, payload, expected_code=[204]):
-        code , data = self._cli.send_request(ressource, data=payload, method='PATCH')
+        code , data = self._cli.send_request(payload, path=ressource, method='PATCH')
         if code not in expected_code:
             self.module.fail_json(msg=f"PATCH failed for '{ressource}'", status_code=code, body=data)
         return data
 
     def put(self, ressource, payload, expected_code=[204]):
-        code , data = self._cli.send_request(ressource, data=payload, method='PUT')
+        code , data = self._cli.send_request(payload, path=ressource, method='PUT')
         if code not in expected_code:
             self.module.fail_json(msg=f"PUT failed for '{ressource}'", status_code=code, body=data)
         return data
 
     def post(self, ressource, payload, expected_code=[201]):
-        code , data = self._cli.send_request(ressource, data=payload, method='POST')
+        code , data = self._cli.send_request(payload, path=ressource, method='POST')
         if code not in expected_code:
             self.module.fail_json(msg=f"POST failed for '{ressource}'", status_code=code, body=data)
         return data
 
     def delete(self, ressource, expected_code=[204]):
-        code , data = self._cli.send_request(ressource, method='DELETE')
+        code , data = self._cli.send_request(None, path=ressource, method='DELETE')
         if code not in expected_code:
             self.module.fail_json(msg=f"DELETE failed for '{ressource}'", status_code=code, body=data)
         return data
@@ -54,11 +54,10 @@ class SmartZoneConnection(object):
         index = 0
         while True:
             page = self.get(ressource, **kwargs)
-            for item in page['list']:
-                yield item
+            yield from page['list']
             if not page['hasMore']:
                 return
-            index += len(item)
+            index += len(page['list'])
 
     def retrive_by_name(self, ressource, name, required=False, **kwargs):
         for item in self.retrive_list(ressource, **kwargs):

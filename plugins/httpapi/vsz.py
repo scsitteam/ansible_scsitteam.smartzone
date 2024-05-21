@@ -39,15 +39,15 @@ class HttpApi(HttpApiBase):
             raise AnsibleConnectionFailure('Username and password are required for login')
 
         # Login
-        code, data = self.send_request('serviceTicket', payload, method='POST')
+        code, data = self.send_request(payload, path='serviceTicket', method='POST')
         if code != 200:
             if 'message' in data:
-                raise AnsibleConnectionFailure(f"=== {data}")
+                raise AnsibleConnectionFailure(data['message'])
             raise AnsibleConnectionFailure(f"[{code}] {data}")
         self.connection._service_ticket = data['serviceTicket']
 
     def logout(self):
-        self.send_request('serviceTicket', None, method='DELETE')
+        self.send_request(None, path='serviceTicket', method='DELETE')
 
     @property
     def api_info(self):
@@ -72,7 +72,7 @@ class HttpApi(HttpApiBase):
     def latest_version(self):
         return self.api_info['apiSupportVersions'][-1]
 
-    def send_request(self, path, data=None, method='GET'):
+    def send_request(self, data, path, method='POST'):
         path = f"/wsg/api/public/{self.latest_version}/{path}"
         self._display_request(method, path)
         if hasattr(self.connection, '_service_ticket'):
