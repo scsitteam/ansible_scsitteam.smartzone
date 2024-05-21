@@ -4,12 +4,14 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = """
-author: Marius Rieder <marius.rider@scs.ch>
+DOCUMENTATION = '''
+author:
+    - Marius Rieder (@jiuka)
 name: vsz
 short_description: Use Ruckus SmartZone RestAPI
 description:
-"""
+  - This HttpApi plugin provides methods to connect to Ruckus SmartZone Public API over a HTTP(S).
+'''
 
 import json
 
