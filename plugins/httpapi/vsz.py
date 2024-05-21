@@ -76,7 +76,10 @@ class HttpApi(HttpApiBase):
         path = '/wsg/api/public/{}/{}'.format(self.latest_version, path)
         self._display_request(method, path)
         if hasattr(self.connection, '_service_ticket'):
-            path = '{}?serviceTicket={}'.format(path, self.connection._service_ticket)
+            if '?' in path:
+                path = '{}&serviceTicket={}'.format(path, self.connection._service_ticket)
+            else:
+                path = '{}?serviceTicket={}'.format(path, self.connection._service_ticket)
 
         if data:
             data = json.dumps(data)

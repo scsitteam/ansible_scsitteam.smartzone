@@ -17,38 +17,42 @@ class SmartZoneConnection:
 
     def get(self, ressource, expected_code=200):
         code, data = self._cli.send_request(None, ressource, method='GET')
-        if code == expected_code:
+        if code != expected_code:
             self.module.fail_json(msg="GET failed for '{}'".format(ressource), status_code=code, body=data)
         return data
 
     def patch(self, ressource, payload, expected_code=204):
         code, data = self._cli.send_request(payload, path=ressource, method='PATCH')
-        if code == expected_code:
+        if code != expected_code:
             self.module.fail_json(msg="PATCH failed for '{}'".format(ressource), status_code=code, body=data)
         return data
 
     def put(self, ressource, payload, expected_code=204):
         code, data = self._cli.send_request(payload, path=ressource, method='PUT')
-        if code == expected_code:
+        if code != expected_code:
             self.module.fail_json(msg="PUT failed for '{}'".format(ressource), status_code=code, body=data)
         return data
 
     def post(self, ressource, payload, expected_code=201):
         code, data = self._cli.send_request(payload, path=ressource, method='POST')
-        if code == expected_code:
+        if code != expected_code:
             self.module.fail_json(msg="POST failed for '{}'".format(ressource), status_code=code, body=data)
         return data
 
     def delete(self, ressource, expected_code=204):
         code, data = self._cli.send_request(None, path=ressource, method='DELETE')
-        if code == expected_code:
+        if code != expected_code:
             self.module.fail_json(msg="DELETE failed for '{}'".format(ressource), status_code=code, body=data)
         return data
 
-    def retrive_list(self, ressource, **kwargs):
+    def retrive_list(self, ressource):
         index = 0
         while True:
-            page = self.get(ressource, **kwargs)
+            if '?' in ressource:
+                path = '{}&index={}'.format(ressource, index)
+            else:
+                path = '{}?index={}'.format(ressource, index)
+            page = self.get(path)
             for item in page['list']:
                 yield item
             if not page['hasMore']:
@@ -58,7 +62,7 @@ class SmartZoneConnection:
     def retrive_by_name(self, ressource, name, required=False, **kwargs):
         for item in self.retrive_list(ressource, **kwargs):
             if item['name'] == name:
-                return self.get('{}/{}'.format(ressource, item['id']))
+                return self.get('{}/{}'.format(ressource.split('?')[0], item['id']))
         if required:
             self.module.fail_json(msg="Could not find ressource '{}' with name '{}'.".format(ressource, name))
         return None
