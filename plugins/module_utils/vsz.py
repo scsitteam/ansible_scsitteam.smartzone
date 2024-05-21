@@ -1,0 +1,113 @@
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2024, Marius Rieder <marius.rieder@scs.ch>
+# GNU General Public License v3.0+ (see LICENSES/GPL-3.0-or-later.txt or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
+DOCUMENTATION = """
+author: Marius Rieder <marius.rider@scs.ch>
+name: vsz
+short_description: Use Ruckus SmartZone RestAPI
+description:
+"""
+
+import json
+
+from ansible.module_utils.basic import to_text
+from ansible.errors import AnsibleConnectionFailure
+from ansible.module_utils.connection import ConnectionError
+from ansible.plugins.httpapi import HttpApiBase
+from ansible.module_utils.six.moves.urllib.error import HTTPError
+
+BASE_HEADERS = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+
+class HttpApi(HttpApiBase):
+    def login(self, username, password):
+        self.connection._auth = {}
+        if username and password:
+            payload = dict(
+                username=username,
+                password=password,
+            )
+        else:
+            raise AnsibleConnectionFailure('Username and password are required for login')
+
+        # Login
+        code, data = self.send_request('serviceTicket', payload, method='POST')
+        if code != 200:
+            if 'message' in data:
+                raise AnsibleConnectionFailure(f"=== {data}")
+            raise AnsibleConnectionFailure(f"[{code}] {data}")
+        self.connection._service_ticket = data['serviceTicket']
+
+    def logout(self):
+        self.send_request('serviceTicket', None, method='DELETE')
+
+    @property
+    def api_info(self):
+        if not hasattr(self.connection, '_api_info'):
+            resp, response_data = self.connection.send(
+                '/wsg/api/public/apiInfo',
+                None,
+                method='GET',
+                headers = BASE_HEADERS,
+            )
+            data = to_text(response_data.getvalue())
+            if data:
+                data = json.loads(data)
+            
+            if resp.getcode() != 200 or 'apiSupportVersions' not in data:
+                raise AnsibleConnectionFailure(f"Could not connect to endpoint {self.connection._url}/wsg/api/public/apiInfo")
+            
+            setattr(self.connection, '_api_info', data)
+        return getattr(self.connection, '_api_info')
+
+    @property
+    def latest_version(self):
+        return self.api_info['apiSupportVersions'][-1]
+
+    def send_request(self, path, data=None, method='GET'):
+        path = f"/wsg/api/public/{self.latest_version}/{path}"
+        self._display_request(method, path)
+        if hasattr(self.connection, '_service_ticket'):
+            path = f"{path}?serviceTicket={self.connection._service_ticket}"
+
+        
+        if data:
+            data = json.dumps(data)
+
+        try:
+            response, response_data = self.connection.send(
+                path,
+                data,
+                method=method,
+                headers=BASE_HEADERS,
+            )
+            response_value = self._get_response_value(response_data)
+
+            return response.getcode(), self._response_to_json(response_value)
+        except AnsibleConnectionFailure:
+            return 404, 'Object not found'
+        except HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    def _display_request(self, method, path):
+        self.connection.queue_message(
+            "vvvv",
+            f"Web Services: {method} {self.connection._url}{path}"
+        )
+
+    def _get_response_value(self, response_data):
+        return to_text(response_data.getvalue())
+
+    def _response_to_json(self, response_text):
+        try:
+            return json.loads(response_text) if response_text else {}
+        except json.JSONDecodeError:
+            raise ConnectionError(f"Invalid JSON response: {response_text}")
