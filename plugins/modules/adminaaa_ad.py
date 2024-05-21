@@ -146,7 +146,7 @@ def main():
             new_aaa['activeDirectoryServer']['proxyUserPrincipalName'] = proxy_user
             new_aaa['activeDirectoryServer']['proxyUserPassword'] = proxy_password
         if not module.check_mode:
-            resp = conn.post('adminaaa', json=new_aaa)
+            resp = conn.post('adminaaa', payload=new_aaa)
             new_aaa = conn.get(f"adminaaa/{resp['id']}")
     # Update
     elif state == 'present':
@@ -176,7 +176,7 @@ def main():
 
             result['changed'] = True
             if not module.check_mode:
-                conn.put(f"adminaaa/{current_aaa['id']}", json=dict(name=name, type='AD', activeDirectoryServer=new_ad))
+                conn.put(f"adminaaa/{current_aaa['id']}", payload=dict(name=name, type='AD', activeDirectoryServer=new_ad))
                 new_aaa = conn.get(f"adminaaa/{current_aaa['id']}")
             else:
                 new_aaa = copy.deepcopy(current_aaa)

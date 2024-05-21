@@ -97,7 +97,7 @@ def main():
     if update_scerts:
         result['changed'] = True
         if not module.check_mode:
-            conn.patch('certstore/setting/serviceCertificates', json=update_scerts)
+            conn.patch('certstore/setting/serviceCertificates', payload=update_scerts)
             current_scerts = {sc['service']: sc['certificate'] for sc in conn.get('certstore/setting')['serviceCertificates']}
         else:
             new_scerts = copy.deepcopy(current_scerts)

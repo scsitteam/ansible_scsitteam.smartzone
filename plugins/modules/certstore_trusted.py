@@ -99,7 +99,7 @@ def main():
 
         result['changed'] = True
         if not module.check_mode:
-            resp = conn.post('certstore/trustedCAChainCert', json=payload)
+            resp = conn.post('certstore/trustedCAChainCert', payload=payload)
             new_trust = conn.get(f"certstore/trustedCAChainCert/{resp['id']}")
         else:
             new_trust = payload
@@ -118,7 +118,7 @@ def main():
         if update_trust:
             result['changed'] = True
             if not module.check_mode:
-                resp = conn.patch(f"certstore/trustedCAChainCert/{current_trust['id']}", json=update_trust)
+                resp = conn.patch(f"certstore/trustedCAChainCert/{current_trust['id']}", payload=update_trust)
                 new_trust = conn.get(f"certstore/trustedCAChainCert/{current_trust['id']}")
             else:
                 new_trust = copy.deepcopy(current_trust)

@@ -92,7 +92,7 @@ def main():
     if update_time:
         result['changed'] = True
         if not module.check_mode:
-            conn.patch('system/systemTime', json=update_time)
+            conn.patch('system/systemTime', payload=update_time)
             new_time = conn.get('system/systemTime')
         else:
             new_time = copy.deepcopy(current_time)

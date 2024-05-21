@@ -137,7 +137,7 @@ def main():
 
         result['changed'] = True
         if not module.check_mode:
-            resp = conn.post('certstore/certificate', json=payload)
+            resp = conn.post('certstore/certificate', payload=payload)
             new_cert = conn.get(f"certstore/certificate/{resp['id']}")
         else:
             new_cert = payload
