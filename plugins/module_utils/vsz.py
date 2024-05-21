@@ -80,3 +80,8 @@ class SmartZoneConnection:
             if any(m['id'] == wlan['id'] for m in item['members']):
                 groups.append(item)
         return groups
+
+    @property
+    def domainId(self):
+        session = self.get('session')
+        return session['domainId']
