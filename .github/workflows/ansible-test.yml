@@ -191,7 +191,6 @@ jobs:
           - devel
         # - milestone
         python:
-          - '3.7'
           - '3.8'
           - '3.9'
           - '3.10'
@@ -209,8 +208,6 @@ jobs:
           - ansible: stable-2.14
             python: '3.6'
           - ansible: stable-2.14
-            python: '3.7'
-          - ansible: stable-2.14
             python: '3.8'
           - ansible: stable-2.14
             python: '3.9'
@@ -226,8 +223,6 @@ jobs:
           - ansible: stable-2.15
             python: '3.6'
           - ansible: stable-2.15
-            python: '3.7'
-          - ansible: stable-2.15
             python: '3.8'
           - ansible: stable-2.15
             python: '3.9'
@@ -241,8 +236,6 @@ jobs:
           - ansible: stable-2.16
             python: '3.6'
           - ansible: stable-2.16
-            python: '3.7'
-          - ansible: stable-2.16
             python: '3.8'
           - ansible: stable-2.16
             python: '3.9'
@@ -253,8 +246,6 @@ jobs:
           - ansible: stable-2.16
             python: '3.12'
           # ansible-core 2.17
-          - ansible: stable-2.17
-            python: '3.7'
           - ansible: stable-2.17
             python: '3.8'
           - ansible: stable-2.17
