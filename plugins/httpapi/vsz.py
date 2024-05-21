@@ -43,7 +43,7 @@ class HttpApi(HttpApiBase):
         if code != 200:
             if 'message' in data:
                 raise AnsibleConnectionFailure(data['message'])
-            raise AnsibleConnectionFailure('[%s] %s'.format(code, data))
+            raise AnsibleConnectionFailure('[{}] {}'.format(code, data))
         self.connection._service_ticket = data['serviceTicket']
 
     def logout(self):
@@ -63,7 +63,7 @@ class HttpApi(HttpApiBase):
                 data = json.loads(data)
 
             if resp.getcode() != 200 or 'apiSupportVersions' not in data:
-                raise AnsibleConnectionFailure('Could not connect to endpoint %s/wsg/api/public/apiInfo'.format(self.connection._url))
+                raise AnsibleConnectionFailure('Could not connect to endpoint {}/wsg/api/public/apiInfo'.format(self.connection._url))
 
             setattr(self.connection, '_api_info', data)
         return getattr(self.connection, '_api_info')
@@ -73,10 +73,10 @@ class HttpApi(HttpApiBase):
         return self.api_info['apiSupportVersions'][-1]
 
     def send_request(self, data, path, method='POST'):
-        path = '/wsg/api/public/%s/%s'.format(self.latest_version, path)
+        path = '/wsg/api/public/{}/{}'.format(self.latest_version, path)
         self._display_request(method, path)
         if hasattr(self.connection, '_service_ticket'):
-            path = '%s?serviceTicket=%s'.format(path, self.connection._service_ticket)
+            path = '{}?serviceTicket={}'.format(path, self.connection._service_ticket)
 
         if data:
             data = json.dumps(data)
@@ -99,7 +99,7 @@ class HttpApi(HttpApiBase):
     def _display_request(self, method, path):
         self.connection.queue_message(
             "vvvv",
-            'Web Services: %s %s%s'.format(method, self.connection._url, path)
+            'Web Services: {} {}{}'.format(method, self.connection._url, path)
         )
 
     def _get_response_value(self, response_data):
@@ -109,4 +109,4 @@ class HttpApi(HttpApiBase):
         try:
             return json.loads(response_text) if response_text else {}
         except json.JSONDecodeError:
-            raise ConnectionError('Invalid JSON response: %s'.format(response_text))
+            raise ConnectionError('Invalid JSON response: {}'.format(response_text))
