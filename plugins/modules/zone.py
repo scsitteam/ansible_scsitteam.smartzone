@@ -46,6 +46,22 @@ options:
     snmp:
         description: SNMP profile for zone
         type: str
+    smart_monitor_state:
+        description: State of SmartMonitor to ensure
+        type: str
+        choices: [enabled, disabled]
+    smart_monitor:
+        description: SmartMonitor configuration
+        type: dict
+        suboptions:
+            interval:
+                description: SmartMonitor probe interval
+                type: int
+                required: True
+            retry:
+                description: SmartMonitor probe retry
+                type: int
+                required: True
     state:
         description: Desired state of the AD aaa server.
         type: str
@@ -79,12 +95,20 @@ def main():
         timezone=dict(type='str'),
         syslog=dict(type='str'),
         snmp=dict(type='str'),
+        smart_monitor_state=dict(type='str', choices=['enabled', 'disabled']),
+        smart_monitor=dict(type='dict', options=dict(
+            interval=dict(type='int', required=True),
+            retry=dict(type='int', required=True),
+        )),
         state=dict(type='str', default='present', choices=['present', 'absent']),
     )
 
     module = AnsibleModule(
         argument_spec=argument_spec,
         supports_check_mode=True,
+        required_if=[
+            ('smart_monitor_state', 'enabled', ('smart_monitor',)),
+        ],
     )
     conn = SmartZoneConnection(module)
     result = dict(changed=False)
@@ -99,6 +123,8 @@ def main():
     timezone = dict(customizedTimezone=None, systemTimezone=module.params.get('timezone')) if module.params.get('timezone') else None
     syslog = module.params.get('syslog')
     snmp = module.params.get('snmp')
+    smart_monitor_state = module.params.get('smart_monitor_state')
+    smart_monitor = module.params.get('smart_monitor')
     state = module.params.get('state')
 
     # Resolve Syslog and SNMP to ID
@@ -137,6 +163,11 @@ def main():
             new_zone['syslog'] = syslog
         if snmp:
             new_zone['snmpAgent'] = snmp
+        if smart_monitor_state == 'enabled':
+            new_zone['smartMonitor'] = dict(
+                intervalInSec=smart_monitor['interval'],
+                retryThreshold=smart_monitor['retry'],
+            )
 
         result['changed'] = True
         if not module.check_mode:
@@ -166,6 +197,22 @@ def main():
                     if 'snmpAgent' not in update_zone:
                         update_zone['snmpAgent'] = {}
                     update_zone['snmpAgent'][key] = snmp[key]
+        if smart_monitor_state == 'enabled' and (
+            current_zone['smartMonitor'] is None
+            or current_zone['smartMonitor'].get('intervalInSec') != smart_monitor['interval']
+            or current_zone['smartMonitor'].get('retryThreshold') != smart_monitor['retry']
+        ):
+            update_zone['smartMonitor'] = dict(
+                intervalInSec=smart_monitor['interval'],
+                retryThreshold=smart_monitor['retry'],
+            )
+        elif smart_monitor_state == 'disabled' and current_zone['smartMonitor'] is not None:
+            result['changed'] = True
+            if not module.check_mode:
+                conn.delete(f"rkszones/{current_zone['id']}/smartMonitor")
+                new_zone = conn.get(f"rkszones/{current_zone['id']}")
+            else:
+                update_zone['smartMonitor'] = None
 
         if update_zone:
             result['changed'] = True
