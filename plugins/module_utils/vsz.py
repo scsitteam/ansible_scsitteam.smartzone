@@ -10,6 +10,53 @@ __metaclass__ = type
 from ansible.module_utils.connection import Connection
 
 
+class ApBasicConfig:
+    @staticmethod
+    def argument_spec():
+        return dict(
+            location=dict(type='str'),
+            location_additional=dict(type='str'),
+            latitude=dict(type='float'),
+            longitude=dict(type='float'),
+            altitude=dict(type='dict', options=dict(
+                value=dict(type='int'),
+                unit=dict(type='str', default='meters', choices=['meters', 'floor'])
+            )),
+        )
+
+    @staticmethod
+    def required_together():
+        return [
+            ('latitude', 'longitude'),
+        ]
+
+    @staticmethod
+    def to_dict(params):
+        apconfig = dict()
+        if params.get('location') is not None:
+            apconfig['location'] = params.get('location')
+        if params.get('location_additional') is not None:
+            apconfig['locationAdditionalInfo'] = params.get('location_additional')
+        if params.get('latitude') is not None:
+            apconfig['latitude'] = params.get('latitude')
+        if params.get('longitude') is not None:
+            apconfig['longitude'] = params.get('longitude')
+        if params.get('altitude') and params['altitude']['value'] is not None:
+            apconfig['altitude'] = dict(
+                altitudeUnit=params['altitude']['unit'],
+                altitudeValue=params['altitude']['value'],
+            )
+        return apconfig
+
+    @staticmethod
+    def update_dict(current):
+        update = dict()
+        for key, value in current.items():
+            if value is not None and current[key] != value:
+                update[key] != value
+        return update
+
+
 class SmartZoneConnection:
     def __init__(self, module):
         self.module = module

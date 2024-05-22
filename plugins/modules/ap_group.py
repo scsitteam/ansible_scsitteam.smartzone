@@ -26,12 +26,6 @@ options:
         description: AP group name
         type: str
         required: true
-    location:
-        description: Location of the ap group
-        type: str
-    location_additional:
-        description: Location additional of the ap group
-        type: str
     radio_config:
         description: Ap group radio config
         type: dict
@@ -77,6 +71,9 @@ options:
         default: present
         choices: ['present', 'absent']
 
+extends_documentation_fragment:
+- scsitteam.smartzone.ap_basic_config.documentation
+
 author:
     - Marius Rieder (@jiuka)
 '''
@@ -92,7 +89,7 @@ EXAMPLES = r'''
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection, ApBasicConfig
 
 
 def main():
@@ -100,11 +97,10 @@ def main():
         wlan_group=dict(type='str'),
     ))
 
-    argument_spec = dict(
+    argument_spec = ApBasicConfig.argument_spec()
+    argument_spec.update(dict(
         zone=dict(type='str', required=True),
         name=dict(type='str', required=True),
-        location=dict(type='str'),
-        location_additional=dict(type='str'),
         radio_config=dict(type='dict', default=None, options=dict(
             radio24g=argument_spec_radio,
             radio5g=argument_spec_radio,
@@ -113,11 +109,12 @@ def main():
             radio6g=argument_spec_radio,
         )),
         state=dict(type='str', default='present', choices=['present', 'absent']),
-    )
+    ))
 
     module = AnsibleModule(
         argument_spec=argument_spec,
         supports_check_mode=True,
+        required_together=ApBasicConfig.required_together()
     )
     conn = SmartZoneConnection(module)
     result = dict(changed=False)
@@ -125,9 +122,8 @@ def main():
     # Params
     zone = module.params.get('zone')
     name = module.params.get('name')
-    location = module.params.get('location')
-    location_additional = module.params.get('location_additional')
     radio_config = module.params.get('radio_config')
+    ap_basic_config = ApBasicConfig.to_dict(module.params)
     state = module.params.get('state')
 
     # Resolve Zone
@@ -142,10 +138,7 @@ def main():
         new_group = dict(
             name=name
         )
-        if location:
-            new_group['location'] = location
-        if location_additional:
-            new_group['locationAdditionalInfo'] = location_additional
+        new_group.update(ap_basic_config)
 
         for rtype in radio_config:
             if not radio_config[rtype]:
@@ -166,10 +159,7 @@ def main():
     # Update
     elif state == 'present':
         update_group = dict()
-        if current_group['location'] != location:
-            update_group['location'] = location
-        if current_group['locationAdditionalInfo'] != location_additional:
-            update_group['locationAdditionalInfo'] = location_additional
+        update_group.update(ApBasicConfig.update_dict(ap_basic_config))
 
         for rtype in radio_config:
             if not radio_config[rtype]:
