@@ -62,9 +62,21 @@ options:
                 type: str
                 required: true
     users:
-        description: List of users
-        type: list
-        elements: str
+        description: Users to add, remove or set
+        type: dict
+        suboptions:
+            add:
+                description: Users to add.
+                type: list
+                elements: str
+            remove:
+                description: Users to remove.
+                type: list
+                elements: str
+            set:
+                description: Users to set.
+                type: list
+                elements: str
     state:
         description: Desired state of the AD aaa server.
         type: str
@@ -117,7 +129,18 @@ def main():
             type=dict(type='str', required=True, choices=['DOMAIN', 'ZONE', 'APGROUP']),
             id=dict(type='str', required=True),
         )),
-        users=dict(type='list', elements='str'),
+        users=dict(
+            type='dict',
+            options=dict(
+                add=dict(type='list', default=[], elements='str'),
+                remove=dict(type='list', default=[], elements='str'),
+                set=dict(type='list', default=[], elements='str'),
+            ),
+            mutually_exclusive=[
+                ('set', 'add'),
+                ('set', 'remove'),
+            ],
+        ),
         state=dict(default='present', choices=['present', 'absent'])
     )
 
@@ -143,14 +166,15 @@ def main():
     permissions = module.params.get('permissions')
     users = module.params.get('users')
 
-    # Role vs permissions
-    if role:
-        permissions = conn.retrive_list(f"userGroups/roles/{role}/permissions")
-        permissions = [{'access': p['access'], 'resource': p['resource']} for p in permissions]
-    else:
-        role = 'CUSTOM'
-
     if state == 'present':
+        # Role vs permissions
+        if role:
+            permissions = conn.retrive_list(f"userGroups/roles/{role}/permissions")
+            permissions = [{'access': p['access'], 'resource': p['resource']} for p in permissions]
+        else:
+            role = 'CUSTOM'
+
+        # Resolve SecurityProfile
         accountSecurityProfileId = None
         pname = module.params.get('security_profile')
         for p in conn.retrive_list('accountSecurity'):
@@ -159,6 +183,23 @@ def main():
                 break
         if not accountSecurityProfileId:
             module.fail_json(msg=f"AccountSecurityProfile '{pname}' not found")
+
+        # Resolve Users
+        if users['add']:
+            users['add'] = [
+                conn.retrive_users_by_name(u, required=True)
+                for u in users['add']
+            ]
+        if users['remove']:
+            users['remove'] = [
+                conn.retrive_users_by_name(u)
+                for u in users['remove']
+            ]
+        if users['set']:
+            users['set'] = [
+                conn.retrive_users_by_name(u, required=True)
+                for u in users['set']
+            ]
 
     query = dict(
         fullTextSearch=dict(
@@ -173,7 +214,7 @@ def main():
     for group in groups['list']:
         if group['name'] == name:
             current_group = conn.get(f"userGroups/{group['id']}?includeUsers=True")
-            result['group'] = group
+            result['group'] = current_group
 
     # Create
     if current_group is None and state == 'present':
@@ -184,8 +225,12 @@ def main():
             resourceGroups=resource_groups,
             permissions=permissions,
             accountSecurityProfileId=accountSecurityProfileId,
-            users=users,
         )
+        if users['set']:
+            new_group['users'] = users['set']
+        if users['add']:
+            new_group['users'] = users['add']
+
         if not module.check_mode:
             resp = conn.post('userGroups', payload=new_group)
             new_group = conn.get(f"userGroups/{resp['id']}")
@@ -204,21 +249,41 @@ def main():
             update['permissions'] = permissions
 
         # resource_groups
-        rg_current = [{'id': r['id'], 'type': r['type']} for r in current_group['resource_groups']]
+        rg_current = [{'id': r['id'], 'type': r['type']} for r in current_group['resourceGroups']]
         if rg_current != resource_groups:
             update['resourceGroups'] = resource_groups
 
-        # users
-        rusers_current = sorted(u['id'] for u in current_group['users'])
-        if rusers_current != sorted(u['id'] for u in users):
-            update['users'] = users
+        # Check Users
+        current_user_ids = set(u['id'] for u in current_group['users'])
+        if users['set'] and current_user_ids != set(u['id'] for u in users['set']):
+            update['users'] = users['set']
+
+        if (users['add'] and any(
+            u['id'] not in current_user_ids
+            for u in users['add']
+        )) or (users['remove'] and any(
+            u['id'] in current_user_ids
+            for u in users['remove']
+            if u is not None
+        )):
+            remove_user_ids = set(u['id'] for u in users['remove'] if u is not None)
+            update['users'] = [
+                u
+                for u in current_group['users']
+                if u['id'] not in remove_user_ids
+            ]
+            update['users'] += [
+                u
+                for u in users['add']
+                if u['id'] not in current_user_ids
+            ]
 
         if len(update) > 1:
             result['changed'] = True
             result['update'] = update
             if not module.check_mode:
                 users = conn.patch(f"userGroups/{current_group['id']}", payload=update)
-                new_group = conn.get(f"userGroups/{current_group['id']}")
+                new_group = conn.get(f"userGroups/{current_group['id']}?includeUsers=True")
             else:
                 new_group = copy.deepcopy(current_group)
                 new_group.update(update)
@@ -232,6 +297,8 @@ def main():
 
     # Diff
     if result['changed'] and module._diff:
+        current_group['users'] = [u['userName'] for u in current_group['users']]
+        new_group['users'] = [u['userName'] for u in new_group['users']]
         result['diff'] = dict(before=current_group, after=new_group)
 
     module.exit_json(**result)

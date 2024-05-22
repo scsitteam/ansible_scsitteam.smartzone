@@ -81,6 +81,23 @@ class SmartZoneConnection:
                 groups.append(item)
         return groups
 
+    def retrive_users_by_name(self, name, required=False):
+        query = dict(
+            fullTextSearch=dict(
+                type="OR",
+                value=name,
+                fields=["userName"]
+            )
+        )
+        users = self.post('users/query', payload=query, expected_code=200)
+
+        for user in users['list']:
+            if user['userName'] == name:
+                return user
+        if required:
+            self.module.fail_json(msg=f"Could not find user '{name}'.")
+        return None
+
     @property
     def domainId(self):
         session = self.get('session')

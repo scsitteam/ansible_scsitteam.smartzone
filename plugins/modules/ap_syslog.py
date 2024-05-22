@@ -176,12 +176,12 @@ def main():
                 new_syslog = copy.deepcopy(current_syslog)
                 new_syslog.update(update_syslog)
 
-        # Delete
-        elif current_syslog is not None and state == 'absent':
-            result['changed'] = True
-            if not module.check_mode:
-                resp = conn.delete(f"apSyslogServerProfiles/{current_syslog['id']}")
-            new_syslog = None
+    # Delete
+    elif current_syslog is not None and state == 'absent':
+        result['changed'] = True
+        if not module.check_mode:
+            resp = conn.delete(f"apSyslogServerProfiles/{current_syslog['id']}", expected_code=200)
+        new_syslog = None
 
     # Diff
     if result['changed'] and module._diff:

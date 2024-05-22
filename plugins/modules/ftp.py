@@ -168,12 +168,12 @@ def main():
                 new_ftp.update(update_ftp)
             result['ftp'] = new_ftp
 
-        # Delete
-        elif state == 'absent':
-            result['changed'] = True
-            if not module.check_mode:
-                conn.delete(f"ftps/{current_ftp['id']}")
-            new_ftp = None
+    # Delete
+    elif current_ftp is not None and state == 'absent':
+        result['changed'] = True
+        if not module.check_mode:
+            conn.delete(f"ftps/{current_ftp['id']}")
+        new_ftp = None
 
     # Diff
     if result['changed'] and module._diff:

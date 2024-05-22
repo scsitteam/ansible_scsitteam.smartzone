@@ -236,11 +236,14 @@ def main():
         if snmpv2:
             new_snmp['snmpV2Agent'] = snmpv2
         if snmpv3:
-            new_snmp['snmpV3Agent'] = snmpv3
+            new_snmp['snmpV3Agent'] = [
+                {k: v for k, v in i.items() if v is not None}
+                for i in snmpv3
+            ]
 
         result['changed'] = True
         if not module.check_mode:
-            resp = conn.post('apSnmpAgentProfiles', payload=new_snmp)
+            resp = conn.post('apSnmpAgentProfiles', payload=new_snmp, expected_code=200)
             new_snmp = conn.get(f"apSnmpAgentProfiles/{resp['id']}")
 
     # Update
@@ -251,7 +254,10 @@ def main():
         if snmpv2 and current_snmp['snmpV2Agent'] != snmpv2:
             update_snmp['snmpV2Agent'] = snmpv2
         if snmpv3 and current_snmp['snmpV3Agent'] != snmpv3:
-            update_snmp['snmpV3Agent'] = snmpv3
+            update_snmp['snmpV3Agent'] = [
+                {k: v for k, v in i.items() if v is not None}
+                for i in snmpv3
+            ]
 
         if update_snmp != current_snmp:
             result['changed'] = True
