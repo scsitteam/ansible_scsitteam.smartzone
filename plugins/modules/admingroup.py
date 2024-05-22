@@ -68,14 +68,17 @@ options:
             add:
                 description: Users to add.
                 type: list
+                default: []
                 elements: str
             remove:
                 description: Users to remove.
                 type: list
+                default: []
                 elements: str
             set:
                 description: Users to set.
                 type: list
+                default: []
                 elements: str
     state:
         description: Desired state of the AD aaa server.

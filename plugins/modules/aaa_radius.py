@@ -138,6 +138,10 @@ def main():
 
     # Get current zone
     current_aaa = conn.retrive_by_name(f"rkszones/{zone['id']}/aaa/radius", name)
+    if 'sharedSecret' in current_aaa['primary']:
+        module.no_log_values.update([current_aaa['primary']['sharedSecret']])
+    if 'sharedSecret' in current_aaa['secondary']:
+        module.no_log_values.update([current_aaa['secondary']['sharedSecret']])
 
     # Create
     if current_aaa is None and state == 'present':
@@ -167,7 +171,7 @@ def main():
             update_aaa['primary'] = {
                 key: primary[key]
                 for key in primary
-                if not key.endswith('_update') and primary.get(f"{key}_update", True)
+                if not key.endswith('_update') and (primary.get(f"{key}_update", True) or current_aaa['primary'] is None)
             }
 
         if description and current_aaa['description'] != description:
@@ -179,16 +183,16 @@ def main():
             if not key.endswith('_update') and secondary.get(f"{key}_update", True)
         )):
             update_aaa['secondary'] = {
-                key: secondary[key]
-                for key in secondary
-                if not key.endswith('_update') and secondary.get(f"{key}_update", True)
+                key: value
+                for key, value in secondary.items()
+                if not key.endswith('_update') and (secondary.get(f"{key}_update", True) or current_aaa['secondary'] is None)
             }
 
         if update_aaa:
             result['changed'] = True
             if not module.check_mode:
-                resp = conn.patch(f"rkszones/{resp['id']}/aaa/radius/{resp['id']}", payload=update_aaa)
-                new_aaa = conn.get(f"rkszones/{resp['id']}/aaa/radius/{resp['id']}")
+                resp = conn.patch(f"rkszones/{zone['id']}/aaa/radius/{current_aaa['id']}", payload=update_aaa)
+                new_aaa = conn.get(f"rkszones/{zone['id']}/aaa/radius/{current_aaa['id']}")
             else:
                 new_aaa = copy.deepcopy(current_aaa)
                 new_aaa.update(update_aaa)
