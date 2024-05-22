@@ -307,7 +307,7 @@ def build_radius_options_dict(params):
     radius_options = dict()
 
     for src, dst in [
-        ('nas_id_type', 'nasIdType'),
+        ('nas_id', 'nasIdType'),
         ('customized_nas_id', 'customizedNasId'),
     ]:
         if src in options and options[src]:
