@@ -222,6 +222,18 @@ options:
             hide:
                 description: Hide the SSID
                 type: bool
+            client_isolation:
+                description: Indicates whether wireless client isolation is enabled or disabled.
+                type: bool
+            client_isolation_unicast:
+                description: Indicates whether isolate unicast of wireless client isolation is enabled or disabled.
+                type: bool
+            client_isolation_multicast:
+                description: Indicates whether isolate multicast of wireless client isolation is enabled or disabled.
+                type: bool
+            client_isolation_auto_vrrp:
+                description: Indicates whether Automatic support for VRRP of wireless client isolation is enabled or disabled.
+                type: bool
     state:
         description: Desired state of the ap group
         type: str
@@ -256,13 +268,13 @@ from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import Sma
 
 def build_encryption_dict(params):
     encryption = None
-    if params.get('wpa2') is not None:
+    if params.get('wpa2'):
         encryption = params.get('wpa2')
         encryption['method'] = 'WPA2'
-    elif params.get('wpa23') is not None:
+    elif params.get('wpa23'):
         encryption = params.get('wpa23')
         encryption['method'] = 'WPA23_Mixed'
-    elif params.get('wpa3') is not None:
+    elif params.get('wpa3'):
         encryption = params.get('wpa3')
         encryption['method'] = 'WPA3'
 
@@ -326,6 +338,10 @@ def build_advanced_options_dict(params):
 
     for src, dst in [
         ('hide', 'hideSsidEnabled'),
+        ('client_isolation', 'clientIsolationEnabled'),
+        ('client_isolation_unicast', 'clientIsolationUnicastEnabled'),
+        ('client_isolation_multicast', 'clientIsolationMulticastEnabled'),
+        ('client_isolation_auto_vrrp', 'clientIsolationAutoVrrpEnabled'),
     ]:
         if src in options and options[src] is not None:
             advanced_options[dst] = options[src]
@@ -348,7 +364,7 @@ def main():
             set=dict(type='list', default=[], elements='str'),
         )),
         # Encryption
-        wpa2=dict(type='dict', default=None, options=dict(
+        wpa2=dict(type='dict', options=dict(
             algorithm=dict(type='str', default='AES', choices=["AES", "TKIP_AES", "AES_GCMP_256"]),
             passphrase=dict(type='str', no_log=True),
             passphrase_update=dict(type='bool', default=True, no_log=False),
@@ -356,7 +372,7 @@ def main():
             mfp=dict(type='str', default='disabled', choices=["disabled", "capable", "required"]),
             reserve_ssid=dict(type='bool', default=False),
         )),
-        wpa23=dict(type='dict', default=None, options=dict(
+        wpa23=dict(type='dict', options=dict(
             algorithm=dict(type='str', default='AES', choices=["AES", "AUTO", "AES_GCMP_256"]),
             passphrase=dict(type='str', no_log=True),
             passphrase_update=dict(type='bool', default=True, no_log=False),
@@ -367,7 +383,7 @@ def main():
             reserve_ssid=dict(type='bool', default=False),
             transition_disable=dict(type='bool', default=True)
         )),
-        wpa3=dict(type='dict', default=None, options=dict(
+        wpa3=dict(type='dict', options=dict(
             algorithm=dict(type='str', default='AES', choices=["AES", "AUTO", "AES_GCMP_256"]),
             sae_passphrase=dict(type='str', no_log=True),
             sae_passphrase_update=dict(type='bool', default=True, no_log=False),
@@ -405,6 +421,10 @@ def main():
         )),
         advanced=dict(type='dict', options=dict(
             hide=dict(type='bool'),
+            client_isolation=dict(type='bool'),
+            client_isolation_unicast=dict(type='bool'),
+            client_isolation_multicast=dict(type='bool'),
+            client_isolation_auto_vrrp=dict(type='bool'),
         )),
         state=dict(type='str', default='present', choices=['present', 'absent']),
     )
@@ -502,9 +522,9 @@ def main():
                 if current_wlan['encryption'][key] is not None
             }
             update_wlan['encryption'].update({
-                key: encryption[key]
-                for key in encryption
-                if not key.endswith('_update') and encryption.get(f"{key}_update", True)
+                key: value
+                for key, value in encryption.items()
+                if value is not None and not key.endswith('_update') and encryption.get(f"{key}_update", True)
             })
         if vlan and current_wlan['vlan']['accessVlan'] != vlan['accessVlan']:
             update_wlan['vlan'] = vlan
@@ -517,7 +537,6 @@ def main():
 
         if update_wlan:
             result['changed'] = True
-            result['update_wlan'] = update_wlan
             if not module.check_mode:
                 conn.patch(f"rkszones/{zone['id']}/wlans/{current_wlan['id']}", payload=update_wlan)
                 new_wlan = conn.get(f"rkszones/{zone['id']}/wlans/{current_wlan['id']}")
