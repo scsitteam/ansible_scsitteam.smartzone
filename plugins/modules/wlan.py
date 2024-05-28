@@ -511,6 +511,8 @@ def main():
     # Update
     elif state == 'present':
         update_wlan = dict()
+        if ssid and current_wlan['ssid'] != ssid:
+            update_wlan['ssid'] = ssid
         if encryption and any(
             current_wlan['encryption'].get(key) != encryption[key]
             for key in encryption
