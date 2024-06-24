@@ -240,7 +240,7 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
-EXAMPLES =  r'''
+EXAMPLES = r'''
 - name: Setup SSID Ansible
   wlan:
     zone: Ansible
