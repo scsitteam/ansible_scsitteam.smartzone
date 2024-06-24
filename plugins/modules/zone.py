@@ -25,9 +25,6 @@ options:
     description:
         description: Description of the zone
         type: str
-    location:
-        description: Location of the zone
-        type: str
     ap_login_name:
         description: Login name for aps access.
         type: str
@@ -68,6 +65,9 @@ options:
         default: present
         choices: ['present', 'absent']
 
+extends_documentation_fragment:
+- scsitteam.smartzone.ap_basic_config.documentation
+
 author:
     - Marius Rieder (@jiuka)
 '''
@@ -81,14 +81,14 @@ EXAMPLES = r'''
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection, ApBasicConfig
 
 
 def main():
-    argument_spec = dict(
+    argument_spec = ApBasicConfig.argument_spec()
+    argument_spec.update(dict(
         name=dict(type='str', required=True),
         description=dict(type='str'),
-        location=dict(type='str'),
         ap_login_name=dict(type='str'),
         ap_login_password=dict(type='str', no_log=True),
         country_code=dict(type='str'),
@@ -101,7 +101,7 @@ def main():
             retry=dict(type='int', required=True),
         )),
         state=dict(type='str', default='present', choices=['present', 'absent']),
-    )
+    ))
 
     module = AnsibleModule(
         argument_spec=argument_spec,
@@ -109,6 +109,7 @@ def main():
         required_if=[
             ('smart_monitor_state', 'enabled', ('smart_monitor',)),
         ],
+        required_together=ApBasicConfig.required_together()
     )
     conn = SmartZoneConnection(module)
     result = dict(changed=False)
@@ -116,7 +117,6 @@ def main():
     # Params
     name = module.params.get('name')
     description = module.params.get('description')
-    location = module.params.get('location')
     ap_login_name = module.params.get('ap_login_name')
     ap_login_password = module.params.get('ap_login_password')
     country_code = module.params.get('country_code')
@@ -125,6 +125,7 @@ def main():
     snmp = module.params.get('snmp')
     smart_monitor_state = module.params.get('smart_monitor_state')
     smart_monitor = module.params.get('smart_monitor')
+    ap_basic_config = ApBasicConfig.to_dict(module.params)
     state = module.params.get('state')
 
     # Resolve Syslog and SNMP to ID
@@ -153,8 +154,6 @@ def main():
         )
         if description:
             new_zone['description'] = description
-        if location:
-            new_zone['location'] = location
         if country_code:
             new_zone['countryCode'] = country_code
         if timezone:
@@ -168,6 +167,7 @@ def main():
                 intervalInSec=smart_monitor['interval'],
                 retryThreshold=smart_monitor['retry'],
             )
+        new_zone.update(ap_basic_config)
 
         result['changed'] = True
         if not module.check_mode:
@@ -179,8 +179,6 @@ def main():
         update_zone = dict()
         if description and current_zone['description'] != description:
             update_zone['description'] = description
-        if location and current_zone['location'] != location:
-            update_zone['location'] = location
         if country_code and current_zone['countryCode'] != country_code:
             update_zone['countryCode'] = country_code
         if timezone and current_zone['timezone'] != timezone:
@@ -213,6 +211,7 @@ def main():
                 new_zone = conn.get(f"rkszones/{current_zone['id']}")
             else:
                 update_zone['smartMonitor'] = None
+        update_zone.update(ApBasicConfig.update_dict(ap_basic_config))
 
         if update_zone:
             result['changed'] = True
