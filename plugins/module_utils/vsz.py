@@ -53,8 +53,7 @@ class SmartZoneConnection:
             else:
                 path = f"{ressource}?index={index}"
             page = self.get(path)
-            for item in page['list']:
-                yield item
+            yield from page['list']
             if not page['hasMore']:
                 return
             index += len(page['list'])
