@@ -64,7 +64,7 @@ options:
                 choices: [active_active, primary_backup]
 
 author:
-    - Adrian Kaier
+    - Adrian Kaier (@a3an-k)
 '''
 
 EXAMPLES = r'''

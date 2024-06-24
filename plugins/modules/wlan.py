@@ -153,10 +153,6 @@ options:
                 description: Enable reserve SSID mode
                 type: bool
                 default: False
-            transition_disable:
-                description: transition to mose secure mode
-                type: bool
-                default: True
     auth_profile:
         description: Authentication profile
         type: dict
@@ -244,7 +240,7 @@ author:
     - Marius Rieder (@jiuka)
 '''
 
-EXAMPLES: r'''
+EXAMPLES =  r'''
 - name: Setup SSID Ansible
   wlan:
     zone: Ansible

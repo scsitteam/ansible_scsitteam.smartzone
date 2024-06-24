@@ -27,7 +27,7 @@ class ApBasicConfig:
 
     @staticmethod
     def required_together():
-        return  [
+        return [
             ('latitude', 'longitude'),
         ]
 
@@ -44,12 +44,12 @@ class ApBasicConfig:
             apconfig['longitude'] = params.get('longitude')
         if params.get('altitude') and params['altitude']['value'] is not None:
             apconfig['altitude'] = dict(
-                   altitudeUnit=params['altitude']['unit'],
-                   altitudeValue=params['altitude']['value'],
+                altitudeUnit=params['altitude']['unit'],
+                altitudeValue=params['altitude']['value'],
             )
         return apconfig
 
-    def update(self, update, current={}):
+    def update(self, update, current=None):
         for key in self.options:
-            if current.get(key) != self.options[key]:
+            if current is None or current.get(key) != self.options[key]:
                 update[key] = self.options[key]
