@@ -81,7 +81,8 @@ EXAMPLES = r'''
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection, ApBasicConfig
+from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+from ansible_collections.scsitteam.smartzone.plugins.module_utils.params import ApBasicConfig
 
 
 def main():
@@ -125,7 +126,7 @@ def main():
     snmp = module.params.get('snmp')
     smart_monitor_state = module.params.get('smart_monitor_state')
     smart_monitor = module.params.get('smart_monitor')
-    ap_basic_config = ApBasicConfig.to_dict(module.params)
+    ap_basic_config = ApBasicConfig(module.params)
     state = module.params.get('state')
 
     # Resolve Syslog and SNMP to ID
@@ -167,7 +168,7 @@ def main():
                 intervalInSec=smart_monitor['interval'],
                 retryThreshold=smart_monitor['retry'],
             )
-        new_zone.update(ap_basic_config)
+        ap_basic_config.update(new_zone)
 
         result['changed'] = True
         if not module.check_mode:
@@ -211,7 +212,7 @@ def main():
                 new_zone = conn.get(f"rkszones/{current_zone['id']}")
             else:
                 update_zone['smartMonitor'] = None
-        update_zone.update(ApBasicConfig.update_dict(ap_basic_config))
+        ap_basic_config.update(update_zone, current_zone)
 
         if update_zone:
             result['changed'] = True

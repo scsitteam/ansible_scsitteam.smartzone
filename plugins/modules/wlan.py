@@ -390,7 +390,6 @@ def main():
             fast_roaming=dict(type='bool', default=False),
             mfp=dict(type='str', default='required', choices=["disabled", "capable", "required"]),
             reserve_ssid=dict(type='bool', default=False),
-            transition_disable=dict(type='bool', default=True)
         )),
         auth_profile=dict(type='dict', default=None, options=dict(
             profile=dict(type='str', required=True),

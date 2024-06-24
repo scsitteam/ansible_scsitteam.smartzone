@@ -89,7 +89,8 @@ EXAMPLES = r'''
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection, ApBasicConfig
+from ansible_collections.scsitteam.smartzone.plugins.module_utils.vsz import SmartZoneConnection
+from ansible_collections.scsitteam.smartzone.plugins.module_utils.params import ApBasicConfig
 
 
 def main():
@@ -123,7 +124,7 @@ def main():
     zone = module.params.get('zone')
     name = module.params.get('name')
     radio_config = module.params.get('radio_config')
-    ap_basic_config = ApBasicConfig.to_dict(module.params)
+    ap_basic_config = ApBasicConfig(module.params)
     state = module.params.get('state')
 
     # Resolve Zone
@@ -138,7 +139,7 @@ def main():
         new_group = dict(
             name=name
         )
-        new_group.update(ap_basic_config)
+        ap_basic_config.update(new_group)
 
         for rtype in radio_config:
             if not radio_config[rtype]:
@@ -159,7 +160,7 @@ def main():
     # Update
     elif state == 'present':
         update_group = dict()
-        update_group.update(ApBasicConfig.update_dict(ap_basic_config))
+        ap_basic_config.update(update_group, current_group)
 
         for rtype in radio_config:
             if not radio_config[rtype]:

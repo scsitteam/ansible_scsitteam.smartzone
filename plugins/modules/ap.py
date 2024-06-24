@@ -102,7 +102,7 @@ def main():
     if update_ap:
         result['changed'] = True
         if not module.check_mode:
-            resp = conn.patch(f"aps/{mac}", json=update_ap)
+            resp = conn.patch(f"aps/{mac}", payload=update_ap)
             new_ap = conn.get(f"aps/{mac}")
         else:
             new_ap = copy.deepcopy(current_ap)
